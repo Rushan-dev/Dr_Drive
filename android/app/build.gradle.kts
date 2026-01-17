@@ -7,8 +7,13 @@ plugins {
 
 android {
     namespace = "com.example.smart_traffic_app"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 34
+    ndkVersion = "25.1.8937393"
+    
+    // Enable build features
+    buildFeatures {
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -32,10 +37,25 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Enable code shrinking and obfuscation
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("debug")
         }
+        debug {
+            isDebuggable = true
+        }
+    }
+    
+    // Configure Java version compatibility
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    
+    kotlinOptions {
+        jvmTarget = '11'
     }
 }
 

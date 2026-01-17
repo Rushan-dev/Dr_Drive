@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
+import '../models/user_model.dart';
 import '../constants/app_constants.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -32,7 +35,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeAnimationController, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _fadeAnimationController,
+        curve: Curves.easeInOut,
+      ),
     );
     _fadeAnimationController.forward();
   }
@@ -49,21 +55,112 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   }
 
   void _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showErrorDialog('Please fill in all fields');
+      return;
+    }
+
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.pushReplacementNamed(context, '/home');
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/main');
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'An error occurred';
+      if (e.code == 'user-not-found') {
+        message = 'No user found with this email';
+      } else if (e.code == 'wrong-password') {
+        message = 'Incorrect password';
+      } else if (e.code == 'user-disabled') {
+        message = 'This account has been disabled';
+      } else {
+        message = e.message ?? 'Authentication failed';
+      }
+      _showErrorDialog(message);
+    } catch (e) {
+      _showErrorDialog('An unexpected error occurred. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   void _handleRegister() async {
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-    if (mounted) {
-      setState(() => _isLoading = false);
-      _showEmergencyContactsDialog();
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
+      _showErrorDialog('Please fill in all fields');
+      return;
     }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showErrorDialog('Passwords do not match');
+      return;
+    }
+
+    if (_passwordController.text.length < 6) {
+      _showErrorDialog('Password must be at least 6 characters long');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.register(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _nameController.text.trim(),
+        UserRole.user, // Default role for new users
+      );
+
+      if (mounted) {
+        _showEmergencyContactsDialog();
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'Registration failed';
+      if (e.code == 'email-already-in-use') {
+        message = 'An account already exists with this email';
+      } else if (e.code == 'weak-password') {
+        message = 'The password provided is too weak';
+      } else if (e.code == 'invalid-email') {
+        message = 'The email address is not valid';
+      } else {
+        message = e.message ?? 'Registration failed';
+      }
+      _showErrorDialog(message);
+    } catch (e) {
+      _showErrorDialog('An unexpected error occurred. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -108,7 +205,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(25),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2196F3).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFF2196F3,
+                            ).withValues(alpha: 0.4),
                             blurRadius: 25,
                             offset: const Offset(0, 15),
                           ),
@@ -235,10 +334,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       height: 650,
                       child: TabBarView(
                         controller: _tabController,
-                        children: [
-                          _buildLoginForm(),
-                          _buildRegisterForm(),
-                        ],
+                        children: [_buildLoginForm(), _buildRegisterForm()],
                       ),
                     ),
                   ),
@@ -248,9 +344,27 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   // Guest Option
                   Center(
                     child: TextButton(
-                      onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
+                      onPressed: () {
+                        // Sign in as guest (using a temporary account)
+                        try {
+                          // For guest access, we'll just navigate to main without authentication
+                          // Alternatively, you could implement a guest user in your AuthService
+                          if (mounted) {
+                            Navigator.pushReplacementNamed(context, '/main');
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            _showErrorDialog(
+                              'Failed to continue as guest. Please try again.',
+                            );
+                          }
+                        }
+                      },
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -275,6 +389,37 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  // Handle password reset
+  Future<void> _handleForgotPassword() async {
+    if (_emailController.text.isEmpty) {
+      _showErrorDialog('Please enter your email address');
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text.trim(),
+      );
+      if (mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Password reset email sent. Please check your inbox.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog(
+          'Failed to send reset email. Please check the email and try again.',
+        );
+      }
+    }
   }
 
   Widget _buildLoginForm() {
@@ -317,7 +462,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
               filled: true,
               fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               labelStyle: TextStyle(
                 color: const Color(0xFF757575),
                 fontFamily: 'Roboto',
@@ -373,13 +521,16 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 icon: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   child: Icon(
-                    _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    _obscurePassword
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
                     key: ValueKey<bool>(_obscurePassword),
                     color: const Color(0xFF757575),
                     size: 24,
                   ),
                 ),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -387,7 +538,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
               filled: true,
               fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               labelStyle: TextStyle(
                 color: const Color(0xFF757575),
                 fontFamily: 'Roboto',
@@ -415,9 +569,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             opacity: _fadeAnimation.value,
             duration: const Duration(milliseconds: 800),
             child: TextButton(
-              onPressed: () {},
+              onPressed: _handleForgotPassword,
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -444,10 +601,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           height: 60,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                const Color(0xFF2196F3),
-                const Color(0xFF1976D2),
-              ],
+              colors: [const Color(0xFF2196F3), const Color(0xFF1976D2)],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
@@ -547,7 +701,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
               filled: true,
               fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               labelStyle: TextStyle(
                 color: const Color(0xFF757575),
                 fontFamily: 'Roboto',
@@ -604,7 +761,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
               filled: true,
               fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               labelStyle: TextStyle(
                 color: const Color(0xFF757575),
                 fontFamily: 'Roboto',
@@ -660,13 +820,16 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 icon: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   child: Icon(
-                    _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    _obscurePassword
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
                     key: ValueKey<bool>(_obscurePassword),
                     color: const Color(0xFF757575),
                     size: 24,
                   ),
                 ),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -674,7 +837,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
               filled: true,
               fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               labelStyle: TextStyle(
                 color: const Color(0xFF757575),
                 fontFamily: 'Roboto',
@@ -730,13 +896,17 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 icon: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   child: Icon(
-                    _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    _obscureConfirmPassword
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
                     key: ValueKey<bool>(_obscureConfirmPassword),
                     color: const Color(0xFF757575),
                     size: 24,
                   ),
                 ),
-                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                onPressed: () => setState(
+                  () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                ),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -744,7 +914,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               ),
               filled: true,
               fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
               labelStyle: TextStyle(
                 color: const Color(0xFF757575),
                 fontFamily: 'Roboto',
@@ -791,10 +964,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           height: 60,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                const Color(0xFF2196F3),
-                const Color(0xFF1976D2),
-              ],
+              colors: [const Color(0xFF2196F3), const Color(0xFF1976D2)],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
@@ -870,7 +1040,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(12),
@@ -912,10 +1085,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 offset: const Offset(0, 8),
               ),
             ],
-            border: Border.all(
-              color: const Color(0xFFE0E0E0),
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
           ),
           child: Material(
             color: Colors.transparent,
@@ -1041,7 +1211,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(12),
@@ -1083,10 +1256,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 offset: const Offset(0, 8),
               ),
             ],
-            border: Border.all(
-              color: const Color(0xFFE0E0E0),
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
           ),
           child: Material(
             color: Colors.transparent,
@@ -1205,9 +1375,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         elevation: 20,
         backgroundColor: Colors.white,
         child: Container(
@@ -1286,10 +1454,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8F9FA),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFE3F2FD),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFE3F2FD), width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1340,7 +1505,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF2196F3,
+                            ).withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -1372,7 +1539,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF2196F3,
+                            ).withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -1398,10 +1567,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8F9FA),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFE3F2FD),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFE3F2FD), width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1452,7 +1618,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: const Color(0xFF757575).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF757575,
+                            ).withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -1484,7 +1652,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: const Color(0xFF757575).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF757575,
+                            ).withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -1539,7 +1709,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2196F3).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFF2196F3,
+                            ).withValues(alpha: 0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),

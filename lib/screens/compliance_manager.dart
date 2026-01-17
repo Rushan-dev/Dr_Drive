@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../widgets/custom_app_bar.dart';
 
 class ComplianceManagerScreen extends StatefulWidget {
   const ComplianceManagerScreen({super.key});
 
   @override
-  State<ComplianceManagerScreen> createState() => _ComplianceManagerScreenState();
+  State<ComplianceManagerScreen> createState() =>
+      _ComplianceManagerScreenState();
 }
 
 class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
@@ -39,18 +41,23 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reminder Dashboard'),
-        backgroundColor: primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddReminderDialog(),
-          ),
-        ],
-      ),
+      appBar: const CustomAppBar(title: 'DR.DRIVE', showSOS: true),
       body: Column(
         children: [
+          // Page Title
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            color: primaryColor.withOpacity(0.1),
+            child: const Text(
+              'Reminder Dashboard',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ),
           // Summary Cards
           Container(
             padding: const EdgeInsets.all(16),
@@ -63,14 +70,14 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
                   Icons.list,
                   primaryColor,
                 ),
-                const SizedBox(width: 12),
+                const Spacer(),
                 _buildSummaryCard(
                   'Pending',
                   _reminders.where((r) => !r.isCompleted).length.toString(),
                   Icons.pending,
                   warningColor,
                 ),
-                const SizedBox(width: 12),
+                const Spacer(),
                 _buildSummaryCard(
                   'Completed',
                   _reminders.where((r) => r.isCompleted).length.toString(),
@@ -98,7 +105,12 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String count, IconData icon, Color color) {
+  Widget _buildSummaryCard(
+    String title,
+    String count,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -184,17 +196,16 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
           color: errorColor,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Icon(
-          Icons.delete,
-          color: Colors.white,
-        ),
+        child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (direction) => _deleteReminder(reminder.id),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: kCardDecoration.copyWith(
           border: Border.all(
-            color: reminder.isCompleted ? successColor.withValues(alpha: 0.3) : Colors.transparent,
+            color: reminder.isCompleted
+                ? successColor.withValues(alpha: 0.3)
+                : Colors.transparent,
             width: 2,
           ),
         ),
@@ -210,7 +221,9 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
               fontSize: 16,
               fontWeight: FontWeight.w500,
               color: reminder.isCompleted ? textSecondary : textPrimary,
-              decoration: reminder.isCompleted ? TextDecoration.lineThrough : null,
+              decoration: reminder.isCompleted
+                  ? TextDecoration.lineThrough
+                  : null,
               fontFamily: 'Roboto',
             ),
           ),
@@ -228,11 +241,7 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: textSecondary,
-                  ),
+                  Icon(Icons.access_time, size: 14, color: textSecondary),
                   const SizedBox(width: 4),
                   Text(
                     _formatDateTime(reminder.dateTime),
@@ -242,7 +251,7 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
                       fontFamily: 'Roboto',
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const Spacer(),
                   _buildPriorityChip(reminder.priority),
                 ],
               ),
@@ -304,9 +313,14 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
   void _showReminderDialog(Reminder? reminder) {
     final isEditing = reminder != null;
     final titleController = TextEditingController(text: reminder?.title ?? '');
-    final descriptionController = TextEditingController(text: reminder?.description ?? '');
-    DateTime selectedDate = reminder?.dateTime ?? DateTime.now().add(const Duration(days: 1));
-    TimeOfDay selectedTime = TimeOfDay.fromDateTime(reminder?.dateTime ?? DateTime.now());
+    final descriptionController = TextEditingController(
+      text: reminder?.description ?? '',
+    );
+    DateTime selectedDate =
+        reminder?.dateTime ?? DateTime.now().add(const Duration(days: 1));
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(
+      reminder?.dateTime ?? DateTime.now(),
+    );
     Priority selectedPriority = reminder?.priority ?? Priority.medium;
 
     showDialog(
@@ -344,7 +358,9 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
                             context: context,
                             initialDate: selectedDate,
                             firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                           );
                           if (date != null) {
                             setState(() => selectedDate = date);
@@ -375,9 +391,7 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Priority>(
                   initialValue: selectedPriority,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Priority'),
                   items: Priority.values.map((priority) {
                     return DropdownMenuItem(
                       value: priority,
@@ -436,7 +450,12 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
     );
   }
 
-  void _addReminder(String title, String description, DateTime dateTime, Priority priority) {
+  void _addReminder(
+    String title,
+    String description,
+    DateTime dateTime,
+    Priority priority,
+  ) {
     final newReminder = Reminder(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
@@ -450,7 +469,13 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
     });
   }
 
-  void _updateReminder(String id, String title, String description, DateTime dateTime, Priority priority) {
+  void _updateReminder(
+    String id,
+    String title,
+    String description,
+    DateTime dateTime,
+    Priority priority,
+  ) {
     setState(() {
       final index = _reminders.indexWhere((r) => r.id == id);
       if (index != -1) {
@@ -486,9 +511,9 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
     setState(() {
       _reminders.removeWhere((r) => r.id == id);
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Reminder deleted')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Reminder deleted')));
   }
 
   String _formatDateTime(DateTime dateTime) {
@@ -500,7 +525,19 @@ class _ComplianceManagerScreenState extends State<ComplianceManagerScreen> {
     } else if (difference.inDays == 1) {
       return 'Tomorrow ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays < 7) {
-      return '${dateTime.weekday == 1 ? 'Mon' : dateTime.weekday == 2 ? 'Tue' : dateTime.weekday == 3 ? 'Wed' : dateTime.weekday == 4 ? 'Thu' : dateTime.weekday == 5 ? 'Fri' : dateTime.weekday == 6 ? 'Sat' : 'Sun'} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+      return '${dateTime.weekday == 1
+          ? 'Mon'
+          : dateTime.weekday == 2
+          ? 'Tue'
+          : dateTime.weekday == 3
+          ? 'Wed'
+          : dateTime.weekday == 4
+          ? 'Thu'
+          : dateTime.weekday == 5
+          ? 'Fri'
+          : dateTime.weekday == 6
+          ? 'Sat'
+          : 'Sun'} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else {
       return '${dateTime.day}/${dateTime.month} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     }

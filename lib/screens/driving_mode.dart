@@ -4,6 +4,7 @@ import 'package:syncfusion_flutter_gauges/gauges.dart';
 // import 'package:vibration/vibration.dart'; // Commented out for build phase
 import 'dart:async';
 import 'dart:math'; // For mock speed generation
+import '../widgets/custom_app_bar.dart';
 
 // Development flag - set to true to enable real GPS and vibration
 const bool enableRealGpsVibration = false;
@@ -58,14 +59,14 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
 
   void _toggleDriveMode(bool enabled) {
     if (_isLoading) return; // Prevent toggling during loading
-    
+
     if (enabled) {
       // Immediately update the UI to show enabled state
       setState(() {
         _driveModeEnabled = true;
         _isLoading = true;
       });
-      
+
       // Start the async process
       _enableDriveMode();
     } else {
@@ -123,11 +124,11 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
       } else {
         // Mock implementation - simulate checking services and permissions
         await Future.delayed(const Duration(seconds: 1));
-        
+
         // Simulate random success/failure for testing
         final random = Random();
         final success = random.nextBool();
-        
+
         if (!success) {
           // Simulate location services disabled
           if (mounted) {
@@ -139,7 +140,7 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
           });
           return;
         }
-        
+
         _startSpeedMonitoring();
       }
 
@@ -179,17 +180,17 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
           timer.cancel();
           return;
         }
-        
+
         // Generate mock speed between 0-80 km/h with some variation
         final random = Random();
         final baseSpeed = _currentSpeed;
         final variation = (random.nextDouble() - 0.5) * 20; // -10 to +10
         final newSpeed = (baseSpeed + variation).clamp(0.0, 80.0);
-        
+
         setState(() {
           _currentSpeed = newSpeed;
         });
-        
+
         _checkSpeedLimit(newSpeed);
       });
     }
@@ -258,7 +259,7 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
       setState(() {
         _isVibrating = true;
       });
-      
+
       // Simulate vibration duration
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted && _isVibrating) {
@@ -274,7 +275,7 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
     setState(() {
       _isVibrating = false;
     });
-    
+
     if (enableRealGpsVibration) {
       // Real implementation
       // Vibration.cancel();
@@ -288,7 +289,9 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Location Services Disabled'),
-          content: const Text('Location services are required for speed monitoring. Please enable location services in your device settings.'),
+          content: const Text(
+            'Location services are required for speed monitoring. Please enable location services in your device settings.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -302,7 +305,9 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                 } else {
                   // Mock - simulate user enabling location services
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Mock: Location services enabled')),
+                    const SnackBar(
+                      content: Text('Mock: Location services enabled'),
+                    ),
                   );
                 }
               },
@@ -379,6 +384,7 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: const CustomAppBar(title: 'DR.DRIVE', showSOS: true),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -400,7 +406,10 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Color(0xFF1565C0)),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Color(0xFF1565C0),
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Text(
@@ -412,7 +421,10 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.settings, color: Color(0xFF1565C0)),
+                      icon: const Icon(
+                        Icons.settings,
+                        color: Color(0xFF1565C0),
+                      ),
                       onPressed: () {},
                     ),
                   ],
@@ -440,7 +452,9 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1565C0)),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF1565C0),
+                          ),
                         ),
                       )
                     else
@@ -448,7 +462,9 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                         value: _driveModeEnabled,
                         onChanged: _toggleDriveMode,
                         activeThumbColor: const Color(0xFF4CAF50),
-                        activeTrackColor: const Color(0xFF4CAF50).withValues(alpha: 0.5),
+                        activeTrackColor: const Color(
+                          0xFF4CAF50,
+                        ).withValues(alpha: 0.5),
                         inactiveThumbColor: Colors.grey[400],
                         inactiveTrackColor: Colors.grey[300],
                       ),
@@ -460,7 +476,10 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
               if (_isVibrating)
                 Container(
                   margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFCDD2), // Light red background
                     borderRadius: BorderRadius.circular(25),
@@ -512,7 +531,9 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                             GaugeRange(
                               startValue: _speedLimit * 0.8,
                               endValue: _speedLimit,
-                              color: const Color(0xFFFFC107), // Yellow for caution
+                              color: const Color(
+                                0xFFFFC107,
+                              ), // Yellow for caution
                               startWidth: 12,
                               endWidth: 12,
                             ),
@@ -527,7 +548,9 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                           pointers: [
                             NeedlePointer(
                               value: _currentSpeed,
-                              needleColor: const Color(0xFF1565C0), // Dark blue needle
+                              needleColor: const Color(
+                                0xFF1565C0,
+                              ), // Dark blue needle
                               knobStyle: KnobStyle(
                                 color: Colors.white,
                                 borderColor: const Color(0xFF1565C0),
@@ -546,14 +569,18 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                                     style: const TextStyle(
                                       fontSize: 48,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1565C0), // Dark blue text
+                                      color: Color(
+                                        0xFF1565C0,
+                                      ), // Dark blue text
                                     ),
                                   ),
                                   const Text(
                                     'km/h',
                                     style: TextStyle(
                                       fontSize: 18,
-                                      color: Color(0xFF1565C0), // Dark blue text
+                                      color: Color(
+                                        0xFF1565C0,
+                                      ), // Dark blue text
                                     ),
                                   ),
                                 ],
@@ -575,12 +602,21 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
-                        color: _driveModeEnabled ? const Color(0xFFE8F5E8) : const Color(0xFFF5F5F5), // Light green or light gray
+                        color: _driveModeEnabled
+                            ? const Color(0xFFE8F5E8)
+                            : const Color(
+                                0xFFF5F5F5,
+                              ), // Light green or light gray
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: _driveModeEnabled ? const Color(0xFF4CAF50) : Colors.grey[400]!,
+                          color: _driveModeEnabled
+                              ? const Color(0xFF4CAF50)
+                              : Colors.grey[400]!,
                           width: 2,
                         ),
                       ),
@@ -588,8 +624,12 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            _driveModeEnabled ? Icons.check_circle : Icons.pause_circle,
-                            color: _driveModeEnabled ? const Color(0xFF4CAF50) : Colors.grey[600],
+                            _driveModeEnabled
+                                ? Icons.check_circle
+                                : Icons.pause_circle,
+                            color: _driveModeEnabled
+                                ? const Color(0xFF4CAF50)
+                                : Colors.grey[600],
                             size: 24,
                           ),
                           const SizedBox(width: 8),
@@ -597,10 +637,12 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
                             _isLoading
                                 ? 'Loading...'
                                 : _driveModeEnabled
-                                    ? 'Active'
-                                    : 'Inactive',
+                                ? 'Active'
+                                : 'Inactive',
                             style: TextStyle(
-                              color: _driveModeEnabled ? const Color(0xFF4CAF50) : Colors.grey[600],
+                              color: _driveModeEnabled
+                                  ? const Color(0xFF4CAF50)
+                                  : Colors.grey[600],
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -626,6 +668,4 @@ class _DrivingModeScreenState extends State<DrivingModeScreen> {
       ),
     );
   }
-
-
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../constants/app_constants.dart';
+import '../widgets/custom_app_bar.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
@@ -107,10 +108,8 @@ class _HomeDashboardState extends State<HomeDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Smart Traffic'),
-        backgroundColor: primaryColor,
-        elevation: 0,
+      appBar: CustomAppBar(
+        title: 'DR.DRIVE',
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications),
@@ -140,7 +139,10 @@ class _HomeDashboardState extends State<HomeDashboard> {
                   itemBuilder: (context, index) {
                     final item = _carouselItems[index];
                     return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: item['gradient'],
@@ -245,12 +247,13 @@ class _HomeDashboardState extends State<HomeDashboard> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 1.1,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.1,
+                          ),
                       itemCount: _shortcuts.length,
                       itemBuilder: (context, index) {
                         final shortcut = _shortcuts[index];
@@ -285,7 +288,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -296,46 +299,47 @@ class _HomeDashboardState extends State<HomeDashboard> {
               offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(
-            color: color.withValues(alpha: 0.2),
-            width: 1,
-          ),
+          border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: color,
+              child: Icon(icon, size: 24, color: color),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: textPrimary,
+                  fontFamily: 'Roboto',
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: textPrimary,
-                fontFamily: 'Roboto',
+            const SizedBox(height: 2),
+            Flexible(
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: textSecondary,
+                  fontFamily: 'Roboto',
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: textSecondary,
-                fontFamily: 'Roboto',
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -388,16 +392,18 @@ class _HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  Widget _buildNotificationItem(String title, String message, String time, Color color) {
+  Widget _buildNotificationItem(
+    String title,
+    String message,
+    String time,
+    Color color,
+  ) {
     return Row(
       children: [
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 12),
         Expanded(

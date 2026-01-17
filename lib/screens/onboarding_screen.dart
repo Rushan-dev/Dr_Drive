@@ -15,7 +15,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingItem> _items = [
     OnboardingItem(
       title: 'Overspeed Alerts',
-      description: 'Get instant alerts when you exceed speed limits to ensure safe driving.',
+      description:
+          'Get instant alerts when you exceed speed limits to ensure safe driving.',
       icon: Icons.speed,
       color: warningColor,
     ),
@@ -27,13 +28,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
     OnboardingItem(
       title: 'Hazard & Weather Alerts',
-      description: 'Stay informed about weather conditions and road hazards in real-time.',
+      description:
+          'Stay informed about weather conditions and road hazards in real-time.',
       icon: Icons.warning,
       color: warningColor,
     ),
     OnboardingItem(
       title: 'Compliance Reminders',
-      description: 'Never miss important vehicle documents and compliance deadlines.',
+      description:
+          'Never miss important vehicle documents and compliance deadlines.',
       icon: Icons.check_circle,
       color: successColor,
     ),
@@ -65,47 +68,46 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildPage(OnboardingItem item) {
-    return Padding(
-      padding: const EdgeInsets.all(40.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 150,
-            height: 150,
-            decoration: BoxDecoration(
-              color: item.color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(75),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: item.color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(60),
+              ),
+              child: Icon(item.icon, size: 60, color: item.color),
             ),
-            child: Icon(
-              item.icon,
-              size: 80,
-              color: item.color,
+            const SizedBox(height: 30),
+            Text(
+              item.title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: textPrimary,
+                fontFamily: 'Roboto',
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 40),
-          Text(
-            item.title,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: textPrimary,
-              fontFamily: 'Roboto',
+            const SizedBox(height: 16),
+            Text(
+              item.description,
+              style: TextStyle(
+                fontSize: 16,
+                color: textSecondary,
+                fontFamily: 'Roboto',
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            item.description,
-            style: TextStyle(
-              fontSize: 16,
-              color: textSecondary,
-              fontFamily: 'Roboto',
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -125,7 +127,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 height: 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _currentPage == index ? primaryColor : Colors.grey.shade300,
+                  color: _currentPage == index
+                      ? primaryColor
+                      : Colors.grey.shade300,
                 ),
               ),
             ),
@@ -135,7 +139,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               TextButton(
-                onPressed: () => Navigator.pushReplacementNamed(context, '/auth'),
+                onPressed: () =>
+                    Navigator.pushReplacementNamed(context, '/auth'),
                 child: Text(
                   'Skip',
                   style: TextStyle(
@@ -158,17 +163,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
                 ),
                 child: Text(
                   _currentPage < _items.length - 1 ? 'Next' : 'Get Started',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontFamily: 'Roboto',
-                  ),
+                  style: const TextStyle(fontSize: 16, fontFamily: 'Roboto'),
                 ),
               ),
             ],
