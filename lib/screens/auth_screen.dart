@@ -344,22 +344,45 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                   // Guest Option
                   Center(
                     child: TextButton(
-                      onPressed: () {
-                        // Sign in as guest (using a temporary account)
-                        try {
-                          // For guest access, we'll just navigate to main without authentication
-                          // Alternatively, you could implement a guest user in your AuthService
-                          if (mounted) {
-                            Navigator.pushReplacementNamed(context, '/main');
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            _showErrorDialog(
-                              'Failed to continue as guest. Please try again.',
-                            );
-                          }
-                        }
-                      },
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              setState(() {
+                                _isLoading = true;
+                              });
+                              try {
+                                final authService = Provider.of<AuthService>(
+                                  context,
+                                  listen: false,
+                                );
+                                final userCredential = await authService
+                                    .signInAnonymously();
+
+                                if (userCredential != null && mounted) {
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/home',
+                                  );
+                                } else if (mounted) {
+                                  _showErrorDialog(
+                                    'Guest access is currently unavailable. Please sign in with Google or create an account.',
+                                  );
+                                }
+                              } catch (e) {
+                                print('Error during guest sign-in: $e');
+                                if (mounted) {
+                                  _showErrorDialog(
+                                    'Failed to continue as guest. Please try again or use another sign-in method.',
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isLoading = false;
+                                  });
+                                }
+                              }
+                            },
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -631,6 +654,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                     ),
                   )
                 : Row(
+                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(
@@ -639,13 +663,16 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         size: 24,
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        'Login Securely',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          fontFamily: 'Roboto',
+                      Flexible(
+                        child: Text(
+                          'Login Securely',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontFamily: 'Roboto',
+                          ),
                         ),
                       ),
                     ],
@@ -1024,6 +1051,37 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      setState(() => _isLoading = true);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signInWithGoogle();
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/main');
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'Google Sign-In failed';
+      if (e.code == 'account-exists-with-different-credential') {
+        message =
+            'An account already exists with the same email but different sign-in credentials.';
+      } else if (e.code == 'invalid-credential') {
+        message = 'Error occurred while accessing credentials. Try again.';
+      } else if (e.code == 'operation-not-allowed') {
+        message = 'Google Sign-In is not enabled. Please contact support.';
+      } else {
+        message = e.message ?? 'Google Sign-In failed';
+      }
+      _showErrorDialog(message);
+    } catch (e) {
+      _showErrorDialog('An unexpected error occurred. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   Widget _buildSocialSignInForLogin() {
     return Column(
       children: [
@@ -1070,7 +1128,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
         const SizedBox(height: 24),
 
-        // Premium Google Sign In Button
+        // Google Sign In Button
         AnimatedContainer(
           duration: const Duration(milliseconds: 600),
           width: double.infinity,
@@ -1090,11 +1148,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => Navigator.pushReplacementNamed(context, '/home'),
+              onTap: _isLoading ? null : _handleGoogleSignIn,
               borderRadius: BorderRadius.circular(20),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
@@ -1111,75 +1170,28 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.g_mobiledata_rounded,
-                        color: Color(0xFF4285F4),
-                        size: 18,
-                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF4285F4),
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.g_mobiledata_rounded,
+                              color: Color(0xFF4285F4),
+                              size: 18,
+                            ),
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      'Continue with Google',
-                      style: TextStyle(
-                        color: const Color(0xFF212121),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Roboto',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Premium Facebook Sign In Button
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 700),
-          width: double.infinity,
-          height: 60,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1877F2),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1877F2).withValues(alpha: 0.4),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => Navigator.pushReplacementNamed(context, '/home'),
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(
-                        Icons.facebook_rounded,
-                        color: Color(0xFF1877F2),
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      'Continue with Facebook',
-                      style: TextStyle(
-                        color: Colors.white,
+                      _isLoading ? 'Signing in...' : 'Continue with Google',
+                      style: const TextStyle(
+                        color: Color(0xFF212121),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Roboto',
@@ -1266,6 +1278,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
@@ -1331,6 +1344,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
@@ -1381,359 +1395,314 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         child: Container(
           width: MediaQuery.of(context).size.width * 0.9,
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Premium Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Premium Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2196F3).withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2196F3).withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.emergency_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Emergency Contacts',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Roboto',
+                              ),
+                            ),
+                            Text(
+                              'Add contacts for safety',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                                fontFamily: 'Roboto',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.emergency_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+
+                const SizedBox(height: 24),
+
+                // Contact 1 Section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFE3F2FD),
+                      width: 1,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            'Emergency Contacts',
-                            style: TextStyle(
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2196F3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
                               color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Roboto',
+                              size: 16,
                             ),
                           ),
+                          const SizedBox(width: 12),
                           Text(
-                            'Add contacts for safety',
+                            'Primary Contact',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 14,
+                              color: const Color(0xFF212121),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                               fontFamily: 'Roboto',
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Contact 1 Section
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE3F2FD), width: 1),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2196F3),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.person_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Primary Contact',
-                          style: TextStyle(
-                            color: const Color(0xFF212121),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Roboto',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: contact1NameController,
-                      decoration: InputDecoration(
-                        labelText: 'Full Name',
-                        hintText: 'Emergency Contact Name',
-                        prefixIcon: const Icon(
-                          Icons.person_outline_rounded,
-                          color: Color(0xFF2196F3),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: const Color(
-                              0xFF2196F3,
-                            ).withValues(alpha: 0.2),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: contact1NameController,
+                        decoration: InputDecoration(
+                          labelText: 'Full Name',
+                          hintText: 'Emergency Contact Name',
+                          prefixIcon: const Icon(
+                            Icons.person_outline_rounded,
                             color: Color(0xFF2196F3),
-                            width: 2,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: const Color(0xFF2196F3).withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF2196F3),
+                              width: 2,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: contact1PhoneController,
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        hintText: '+94 XX XXX XXXX',
-                        prefixIcon: const Icon(
-                          Icons.phone_rounded,
-                          color: Color(0xFF2196F3),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: const Color(
-                              0xFF2196F3,
-                            ).withValues(alpha: 0.2),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: contact1PhoneController,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: '+94 XX XXX XXXX',
+                          prefixIcon: const Icon(
+                            Icons.phone_rounded,
                             color: Color(0xFF2196F3),
-                            width: 2,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: const Color(0xFF2196F3).withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF2196F3),
+                              width: 2,
+                            ),
                           ),
                         ),
+                        keyboardType: TextInputType.phone,
                       ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Contact 2 Section (Optional)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE3F2FD), width: 1),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF757575),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.person_add_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Secondary Contact (Optional)',
-                          style: TextStyle(
-                            color: const Color(0xFF424242),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Roboto',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: contact2NameController,
-                      decoration: InputDecoration(
-                        labelText: 'Full Name',
-                        hintText: 'Emergency Contact Name',
-                        prefixIcon: const Icon(
-                          Icons.person_outline_rounded,
-                          color: Color(0xFF757575),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: const Color(
-                              0xFF757575,
-                            ).withValues(alpha: 0.2),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF757575),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: contact2PhoneController,
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number',
-                        hintText: '+94 XX XXX XXXX',
-                        prefixIcon: const Icon(
-                          Icons.phone_rounded,
-                          color: Color(0xFF757575),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: const Color(
-                              0xFF757575,
-                            ).withValues(alpha: 0.2),
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF757575),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Skip for Now',
-                        style: TextStyle(
-                          color: const Color(0xFF757575),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Roboto',
-                        ),
-                      ),
+                // Contact 2 Section (Optional)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFE3F2FD),
+                      width: 1,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF2196F3,
-                            ).withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF757575),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.person_add_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Secondary Contact (Optional)',
+                            style: TextStyle(
+                              color: const Color(0xFF424242),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Roboto',
+                            ),
                           ),
                         ],
                       ),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pushReplacementNamed(context, '/home');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: contact2NameController,
+                        decoration: InputDecoration(
+                          labelText: 'Full Name',
+                          hintText: 'Emergency Contact Name',
+                          prefixIcon: const Icon(
+                            Icons.person_outline_rounded,
+                            color: Color(0xFF757575),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: const Color(0xFF757575).withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF757575),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: contact2PhoneController,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: '+94 XX XXX XXXX',
+                          prefixIcon: const Icon(
+                            Icons.phone_rounded,
+                            color: Color(0xFF757575),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: const Color(0xFF757575).withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF757575),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        keyboardType: TextInputType.phone,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: Text(
-                          'Save & Continue',
+                          'Skip for Now',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: const Color(0xFF757575),
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'Roboto',
@@ -1741,10 +1710,53 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2196F3).withOpacity(0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pushReplacementNamed(context, '/home');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Save & Continue',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Roboto',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

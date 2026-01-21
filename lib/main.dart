@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'screens/onboarding_screen.dart';
 import 'screens/weather_hazard_alerts.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_dashboard.dart';
 import 'screens/driving_mode.dart';
 import 'screens/accident_hotspot_map.dart';
-import 'screens/weather_hazard_alerts.dart';
 import 'screens/compliance_manager.dart';
 import 'screens/profile_settings.dart';
 import 'screens/admin_dashboard.dart';
@@ -33,14 +33,23 @@ Future<void> main() async {
   }
 
   try {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: 'YOUR_API_KEY', // Replace with your actual Firebase config
-        appId: 'YOUR_APP_ID',
-        messagingSenderId: 'YOUR_SENDER_ID',
-        projectId: 'YOUR_PROJECT_ID',
-      ),
-    );
+    if (kIsWeb) {
+      // For web, configuration is handled in firebase-config.js
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'AIzaSyA44JzCfzZ96CAczd5pWZSVM0pcUn4c_uY',
+          appId: '1:902970483982:web:c48494b745b2d6852f635f',
+          messagingSenderId: '902970483982',
+          projectId: 'dr-drive-e1ceb',
+          authDomain: 'dr-drive-e1ceb.firebaseapp.com',
+          storageBucket: 'dr-drive-e1ceb.appspot.com',
+          measurementId: 'G-5XDHRJ6K2N',
+        ),
+      );
+    } else {
+      // For mobile platforms
+      await Firebase.initializeApp();
+    }
     print('Firebase initialized successfully');
   } on FirebaseException catch (e) {
     print('Firebase initialization error: ${e.message}');

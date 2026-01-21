@@ -6,10 +6,10 @@ class UserListTile extends StatelessWidget {
   final Function(UserRole) onRoleChanged;
 
   const UserListTile({
-    Key? key,
+    super.key,
     required this.user,
     required this.onRoleChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

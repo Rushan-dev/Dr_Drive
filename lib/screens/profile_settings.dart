@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 import '../widgets/custom_app_bar.dart';
+import '../models/vehicle_model.dart';
+import 'compliance_manager.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -12,12 +15,40 @@ class ProfileSettingsScreen extends StatefulWidget {
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   // Editable user data
   late Map<String, dynamic> _userData;
+  List<Vehicle> _vehicles = [];
+  final _formKey = GlobalKey<FormState>();
+  final _uuid = const Uuid();
 
   // Form controllers
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _licenseController = TextEditingController();
+
+  // Vehicle form controllers
+  final _vehicleTypeController = TextEditingController();
+  final _vehicleNumberController = TextEditingController();
+  final _fuelTypeController = TextEditingController();
+  final _vehicleModelController = TextEditingController();
+  final _vehicleYearController = TextEditingController();
+  final _vehicleColorController = TextEditingController();
+
+  // Available options
+  final List<String> _vehicleTypes = [
+    'Sedan',
+    'SUV',
+    'Truck',
+    'Motorcycle',
+    'Van',
+  ];
+  final List<String> _fuelTypes = [
+    'Petrol',
+    'Diesel',
+    'Electric',
+    'Hybrid',
+    'CNG',
+    'LPG',
+  ];
 
   @override
   void initState() {
@@ -54,6 +85,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _licenseController.dispose();
+    _vehicleTypeController.dispose();
+    _vehicleNumberController.dispose();
+    _fuelTypeController.dispose();
+    _vehicleModelController.dispose();
+    _vehicleYearController.dispose();
+    _vehicleColorController.dispose();
     super.dispose();
   }
 
@@ -274,17 +311,409 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
+  void _showAddEditVehicleDialog({Vehicle? vehicle, int? index}) {
+    final isEdit = vehicle != null;
+
+    if (isEdit) {
+      _vehicleTypeController.text = vehicle.type;
+      _vehicleNumberController.text = vehicle.number;
+      _fuelTypeController.text = vehicle.fuelType;
+      _vehicleModelController.text = vehicle.model ?? '';
+      _vehicleYearController.text = vehicle.year?.toString() ?? '';
+      _vehicleColorController.text = vehicle.color ?? '';
+    } else {
+      _vehicleTypeController.clear();
+      _vehicleNumberController.clear();
+      _fuelTypeController.clear();
+      _vehicleModelController.clear();
+      _vehicleYearController.clear();
+      _vehicleColorController.clear();
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(isEdit ? 'Edit Vehicle' : 'Add New Vehicle'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Vehicle Type Dropdown
+                  DropdownButtonFormField<String>(
+                    initialValue: _vehicleTypeController.text.isNotEmpty
+                        ? _vehicleTypeController.text
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _vehicleTypes.map((type) {
+                      return DropdownMenuItem(value: type, child: Text(type));
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        _vehicleTypeController.text = value;
+                      }
+                    },
+                    validator: (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Vehicle Number
+                  TextFormField(
+                    controller: _vehicleNumberController,
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle Number',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Fuel Type Dropdown
+                  DropdownButtonFormField<String>(
+                    initialValue: _fuelTypeController.text.isNotEmpty
+                        ? _fuelTypeController.text
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Fuel Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _fuelTypes.map((type) {
+                      return DropdownMenuItem(value: type, child: Text(type));
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        _fuelTypeController.text = value;
+                      }
+                    },
+                    validator: (value) =>
+                        value == null || value.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Vehicle Model
+                  TextFormField(
+                    controller: _vehicleModelController,
+                    decoration: const InputDecoration(
+                      labelText: 'Model (Optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Vehicle Year and Color in a row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _vehicleYearController,
+                          decoration: const InputDecoration(
+                            labelText: 'Year (Optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _vehicleColorController,
+                          decoration: const InputDecoration(
+                            labelText: 'Color (Optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  if (isEdit) ...[
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      title: const Text('Set as default vehicle'),
+                      value: vehicle.isDefault,
+                      onChanged: (bool? value) {
+                        if (value == true) {
+                          setState(() {
+                            for (var v in _vehicles) {
+                              v.isDefault = false;
+                            }
+                            _vehicles[index!] = vehicle.copyWith(
+                              isDefault: true,
+                            );
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  final newVehicle = Vehicle(
+                    id: isEdit ? vehicle.id : _uuid.v4(),
+                    type: _vehicleTypeController.text,
+                    number: _vehicleNumberController.text,
+                    fuelType: _fuelTypeController.text,
+                    model: _vehicleModelController.text.isEmpty
+                        ? null
+                        : _vehicleModelController.text,
+                    year: _vehicleYearController.text.isEmpty
+                        ? null
+                        : int.tryParse(_vehicleYearController.text),
+                    color: _vehicleColorController.text.isEmpty
+                        ? null
+                        : _vehicleColorController.text,
+                    isDefault: isEdit
+                        ? _vehicles[index!].isDefault
+                        : _vehicles.isEmpty, // First vehicle is default
+                  );
+
+                  setState(() {
+                    if (isEdit) {
+                      _vehicles[index!] = newVehicle;
+                    } else {
+                      _vehicles.add(newVehicle);
+                    }
+
+                    // Update user data with the first vehicle as default
+                    if (_vehicles.isNotEmpty) {
+                      final defaultVehicle = _vehicles.firstWhere(
+                        (v) => v.isDefault,
+                        orElse: () => _vehicles.first,
+                      );
+                      _userData['vehicleType'] = defaultVehicle.type;
+                      _userData['vehicleNumber'] = defaultVehicle.number;
+                      _userData['fuelType'] = defaultVehicle.fuelType;
+                    }
+                  });
+
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isEdit
+                            ? 'Vehicle updated successfully'
+                            : 'Vehicle added successfully',
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteVehicle(int index) {
+    final vehicle = _vehicles[index];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Vehicle'),
+          content: Text('Are you sure you want to delete ${vehicle.number}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _vehicles.removeAt(index);
+
+                  // If we deleted the default vehicle, make the first one default
+                  if (_vehicles.isNotEmpty) {
+                    _vehicles[0] = _vehicles[0].copyWith(isDefault: true);
+
+                    // Update user data with the new default vehicle
+                    _userData['vehicleType'] = _vehicles[0].type;
+                    _userData['vehicleNumber'] = _vehicles[0].number;
+                    _userData['fuelType'] = _vehicles[0].fuelType;
+                  } else {
+                    // No vehicles left
+                    _userData['vehicleType'] = '';
+                    _userData['vehicleNumber'] = '';
+                    _userData['fuelType'] = '';
+                  }
+                });
+
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Vehicle deleted')),
+                );
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildVehicleDetailsCard() {
+    // Initialize vehicles from user data if empty
+    if (_vehicles.isEmpty &&
+        _userData['vehicleNumber'] != null &&
+        _userData['vehicleNumber'].isNotEmpty) {
+      _vehicles.add(
+        Vehicle(
+          id: _uuid.v4(),
+          type: _userData['vehicleType'] ?? 'Sedan',
+          number: _userData['vehicleNumber'],
+          fuelType: _userData['fuelType'] ?? 'Petrol',
+          isDefault: true,
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: kCardDecoration,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailRow('Vehicle Type', _userData['vehicleType']),
-          const Divider(height: 24),
-          _buildDetailRow('Vehicle Number', _userData['vehicleNumber']),
-          const Divider(height: 24),
-          _buildDetailRow('Fuel Type', _userData['fuelType']),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'My Vehicles',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              TextButton.icon(
+                onPressed: () => _showAddEditVehicleDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Vehicle'),
+                style: TextButton.styleFrom(foregroundColor: primaryColor),
+              ),
+            ],
+          ),
+
+          if (_vehicles.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Text(
+                'No vehicles added yet. Click "Add Vehicle" to get started.',
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _vehicles.length,
+              separatorBuilder: (context, index) => const Divider(height: 32),
+              itemBuilder: (context, index) {
+                final vehicle = _vehicles[index];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${vehicle.type} • ${vehicle.number}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            if (vehicle.isDefault)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'DEFAULT',
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    if (vehicle.model != null ||
+                        vehicle.year != null ||
+                        vehicle.color != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        [
+                          if (vehicle.model != null) vehicle.model,
+                          if (vehicle.year != null) vehicle.year.toString(),
+                          if (vehicle.color != null) vehicle.color,
+                        ].join(' • '),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Chip(
+                          label: Text(vehicle.fuelType),
+                          backgroundColor: primaryColor.withOpacity(0.1),
+                          labelStyle: TextStyle(
+                            color: primaryColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () => _showAddEditVehicleDialog(
+                            vehicle: vehicle,
+                            index: index,
+                          ),
+                          color: primaryColor,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            size: 20,
+                            color: Colors.red,
+                          ),
+                          onPressed: () => _deleteVehicle(index),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
@@ -320,9 +749,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const Scaffold(
-                    body: Center(child: Text('Compliance Details')),
-                  ),
+                  builder: (context) => const ComplianceManagerScreen(),
                 ),
               );
             },
@@ -472,7 +899,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 value: switchValue,
                 onChanged: onChanged,
                 activeTrackColor: primaryColor,
-                thumbColor: MaterialStateProperty.all(primaryColor),
+                thumbColor: WidgetStateProperty.all(primaryColor),
               ),
           ],
         ),
@@ -494,12 +921,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ),
       ],
     );
-  }
-
-  Color _getSafetyScoreColor(int score) {
-    if (score >= 80) return successColor;
-    if (score >= 50) return warningColor;
-    return errorColor;
   }
 
   void _showAlertModeDialog() {

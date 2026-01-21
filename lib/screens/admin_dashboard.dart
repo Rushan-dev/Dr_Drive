@@ -6,7 +6,7 @@ import '../services/auth_service.dart';
 import '../widgets/user_list_tile.dart';
 
 class AdminDashboard extends StatelessWidget {
-  const AdminDashboard({Key? key}) : super(key: key);
+  const AdminDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {

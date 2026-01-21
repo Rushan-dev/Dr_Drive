@@ -270,15 +270,6 @@ class _AccidentHotspotMapScreenState extends State<AccidentHotspotMapScreen> {
     );
   }
 
-  // Method to refresh map markers based on filter selection
-  void _refreshMapMarkers() {
-    setState(() {
-      _markers.clear();
-      _polygons.clear();
-      _loadMapMarkers();
-    });
-  }
-
   Widget _buildLegendItem(String label, Color color) {
     return Row(
       children: [
@@ -416,7 +407,7 @@ class _AccidentHotspotMapScreenState extends State<AccidentHotspotMapScreen> {
                       labelText: 'Hazard Type',
                       border: OutlineInputBorder(),
                     ),
-                    value: _selectedHazardType,
+                    initialValue: _selectedHazardType,
                     items: const [
                       DropdownMenuItem(
                         value: 'accident',
@@ -487,19 +478,16 @@ class _AccidentHotspotMapScreenState extends State<AccidentHotspotMapScreen> {
         case 'accident':
           icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
           title = 'Reported Accident';
-          break;
         case 'roadblock':
           icon = BitmapDescriptor.defaultMarkerWithHue(
             BitmapDescriptor.hueOrange,
           );
           title = 'Reported Roadblock';
-          break;
         case 'hazard':
           icon = BitmapDescriptor.defaultMarkerWithHue(
             BitmapDescriptor.hueYellow,
           );
           title = 'Reported Hazard';
-          break;
         default:
           icon = BitmapDescriptor.defaultMarker;
           title = 'Reported Issue';

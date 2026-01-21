@@ -64,12 +64,7 @@ class ReportService {
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
-              .map(
-                (doc) => ReportModel.fromMap(
-                  doc.data() as Map<String, dynamic>,
-                  doc.id,
-                ),
-              )
+              .map((doc) => ReportModel.fromMap(doc.data(), doc.id))
               .toList();
         });
   }

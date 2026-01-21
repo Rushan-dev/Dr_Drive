@@ -10,15 +10,18 @@ dependencies:
   flutter:
     sdk: flutter
   # Firebase
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.15.3
-  cloud_firestore: ^4.13.6
+  firebase_core: ^2.15.1
+  firebase_auth: ^4.7.4
+  firebase_auth_web: ^5.4.2
+  cloud_firestore: ^4.8.5
+  google_sign_in: ^6.1.7
+  google_sign_in_web: ^0.12.2
   # UI & State Management
   provider: ^6.1.5
   # Maps & Location
-  google_maps_flutter: ^2.5.0
-  google_maps_flutter_web: ^0.5.4
-  geolocator: ^12.0.0
+  google_maps_flutter: ^2.2.5
+  google_maps_flutter_web: ^0.5.3
+  geolocator: ^10.1.0
   # Local Storage
   shared_preferences: ^2.5.4
   # Media
@@ -31,8 +34,14 @@ dependencies:
   # Utils
   vibration: ^2.0.0
   english_words: ^4.0.0
+  http: ^0.13.5
+  intl: ^0.19.0
+  # Google Maps & Places
+  google_maps_webservice: ^0.0.20-nullsafety.5
+  flutter_google_places: 0.3.0
+  google_api_headers: ^5.3.2
   # Gauges
-  syncfusion_flutter_gauges: ^22.2.9
+  syncfusion_flutter_gauges: ^20.4.52
 
 dev_dependencies:
   flutter_test:
@@ -43,5 +52,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/flying_car.riv
-
-
